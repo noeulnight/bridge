@@ -48,3 +48,6 @@ _doc/
 # gRPC auto-generated C++ source files
 *.pb.cc
 *.pb.h
+
+.gocache*
+.gomodcache*

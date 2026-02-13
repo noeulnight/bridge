@@ -20,6 +20,7 @@ package constants
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/ProtonMail/proton-bridge/v3/internal/platform"
@@ -52,6 +53,12 @@ var (
 
 	// BuildEnv tags used at build time.
 	BuildEnv = ""
+
+	// Host is the hostname advertised to clients.
+	Host = "127.0.0.1"
+
+	// BindHost is the interface used by local IMAP/SMTP listeners.
+	BindHost = "127.0.0.1"
 )
 
 const (
@@ -66,10 +73,17 @@ const (
 
 	// KeyChainName is the name of the entry in the OS keychain.
 	KeyChainName = "bridge-v3"
-
-	// Host is the hostname of the bridge server.
-	Host = "127.0.0.1"
 )
+
+func init() {
+	if host := os.Getenv("BRIDGE_PUBLIC_HOST"); host != "" {
+		Host = host
+	}
+
+	if bindHost := os.Getenv("BRIDGE_BIND_HOST"); bindHost != "" {
+		BindHost = bindHost
+	}
+}
 
 // nolint:goconst
 func getAPIOS() string {

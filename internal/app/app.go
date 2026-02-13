@@ -73,6 +73,13 @@ const (
 	flagCLI      = "cli"
 	flagCLIShort = "c"
 
+	flagWeb      = "web"
+	flagWebShort = "w"
+
+	flagWebAddress = "web-addr"
+	flagWebUser    = "web-admin-user"
+	flagWebPass    = "web-admin-pass"
+
 	flagNonInteractive      = "noninteractive"
 	flagNonInteractiveShort = "n"
 
@@ -152,6 +159,26 @@ func New() *cli.App {
 			Name:    flagCLI,
 			Aliases: []string{flagCLIShort},
 			Usage:   "Start the command line interface",
+		},
+		&cli.BoolFlag{
+			Name:    flagWeb,
+			Aliases: []string{flagWebShort},
+			Usage:   "Start the web administration API",
+		},
+		&cli.StringFlag{
+			Name:  flagWebAddress,
+			Usage: "Address for web administration API listener",
+			Value: "127.0.0.1:8081",
+		},
+		&cli.StringFlag{
+			Name:    flagWebUser,
+			Usage:   "Root admin username for web administration API",
+			EnvVars: []string{"BRIDGE_WEB_ADMIN_USER"},
+		},
+		&cli.StringFlag{
+			Name:    flagWebPass,
+			Usage:   "Root admin password for web administration API",
+			EnvVars: []string{"BRIDGE_WEB_ADMIN_PASS"},
 		},
 		&cli.BoolFlag{
 			Name:    flagNonInteractive,

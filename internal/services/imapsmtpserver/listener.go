@@ -27,7 +27,7 @@ import (
 
 func newListener(port int, useTLS bool, tlsConfig *tls.Config) (net.Listener, error) {
 	if useTLS {
-		tlsListener, err := tls.Listen("tcp", fmt.Sprintf("%v:%v", constants.Host, port), tlsConfig)
+		tlsListener, err := tls.Listen("tcp", fmt.Sprintf("%v:%v", constants.BindHost, port), tlsConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +35,7 @@ func newListener(port int, useTLS bool, tlsConfig *tls.Config) (net.Listener, er
 		return tlsListener, nil
 	}
 
-	netListener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", constants.Host, port))
+	netListener, err := net.Listen("tcp", fmt.Sprintf("%v:%v", constants.BindHost, port))
 	if err != nil {
 		return nil, err
 	}

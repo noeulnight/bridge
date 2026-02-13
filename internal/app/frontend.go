@@ -25,6 +25,7 @@ import (
 	"github.com/ProtonMail/proton-bridge/v3/internal/events"
 	bridgeCLI "github.com/ProtonMail/proton-bridge/v3/internal/frontend/cli"
 	"github.com/ProtonMail/proton-bridge/v3/internal/frontend/grpc"
+	bridgeWeb "github.com/ProtonMail/proton-bridge/v3/internal/frontend/web"
 	"github.com/ProtonMail/proton-bridge/v3/internal/locations"
 	"github.com/ProtonMail/proton-bridge/v3/pkg/restarter"
 	"github.com/sirupsen/logrus"
@@ -48,6 +49,23 @@ func runFrontend(
 	case c.Bool(flagCLI):
 		return bridgeCLI.New(bridge, restarter, eventCh, crashHandler, quitCh).Loop()
 
+	case c.Bool(flagWeb):
+		service, err := bridgeWeb.NewService(
+			bridge,
+			eventCh,
+			quitCh,
+			bridgeWeb.Config{
+				Address:   c.String(flagWebAddress),
+				AdminUser: c.String(flagWebUser),
+				AdminPass: c.String(flagWebPass),
+			},
+		)
+		if err != nil {
+			return fmt.Errorf("could not create web service: %w", err)
+		}
+
+		return service.Loop()
+
 	case c.Bool(flagNonInteractive):
 		<-quitCh
 		return nil
@@ -65,6 +83,6 @@ func runFrontend(
 			logrus.WithError(err).Error("Failed to show app help")
 		}
 
-		return fmt.Errorf("no frontend specified, use --cli, --grpc or --noninteractive")
+		return fmt.Errorf("no frontend specified, use --cli, --web, --grpc or --noninteractive")
 	}
 }

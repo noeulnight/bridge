@@ -90,3 +90,72 @@ There are now three types of system folders which Bridge recognises:
 | Mac/Linux File Socket  | temp     | bridge{4_DIGITS}           |
 
 
+## Web Admin API
+
+Bridge supports a web administration frontend.
+
+### Start Bridge with Web API
+
+Run Bridge with `--web` and provide root admin credentials:
+
+```bash
+BRIDGE_WEB_ADMIN_USER=root \
+BRIDGE_WEB_ADMIN_PASS='change-this-password' \
+go run ./cmd/Desktop-Bridge --web --web-addr 127.0.0.1:8081
+```
+
+### Authentication
+
+- `GET /healthz` is public.
+- All `/api/v1/*` routes require HTTP Basic Auth using:
+  - `BRIDGE_WEB_ADMIN_USER`
+  - `BRIDGE_WEB_ADMIN_PASS`
+
+### Endpoints
+
+- `GET /api/v1/accounts`
+- `POST /api/v1/accounts`
+- `GET /api/v1/accounts/{id}`
+- `POST /api/v1/accounts/{id}/logout`
+- `DELETE /api/v1/accounts/{id}`
+- `POST /api/v1/accounts/{id}/sync`
+- `GET /api/v1/server/mail`
+- `PUT /api/v1/server/mail`
+- `POST /api/v1/repair`
+
+### Example Requests
+
+List accounts:
+
+```bash
+curl -u root:change-this-password \
+  http://127.0.0.1:8081/api/v1/accounts
+```
+
+Add/login account:
+
+```bash
+curl -u root:change-this-password \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"you@proton.me","password":"your-login-password"}' \
+  http://127.0.0.1:8081/api/v1/accounts
+```
+
+Update IMAP/SMTP settings:
+
+```bash
+curl -u root:change-this-password \
+  -X PUT \
+  -H 'Content-Type: application/json' \
+  -d '{"imapPort":1143,"smtpPort":1025,"useSSLForImap":true,"useSSLForSmtp":true}' \
+  http://127.0.0.1:8081/api/v1/server/mail
+```
+
+### Docker Notes
+
+The web frontend enforces loopback bind addresses by default, but Docker image defaults override this for container use:
+
+- `BRIDGE_WEB_ALLOW_NON_LOOPBACK=1`
+- `BRIDGE_BIND_HOST=0.0.0.0`
+
+This allows published ports (`-p`) to reach the web API and IMAP/SMTP listeners from the host.
