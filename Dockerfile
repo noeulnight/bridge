@@ -19,7 +19,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 GOOS=linux \
+RUN make gofiles && \
+    CGO_ENABLED=1 GOOS=linux \
     go build -trimpath \
     -ldflags="-s -w \
     -X github.com/ProtonMail/proton-bridge/v3/internal/constants.Version=${APP_VERSION} \
