@@ -21,6 +21,7 @@ package web
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,6 +100,7 @@ type accountResponse struct {
 	State       string     `json:"state"`
 	Addresses   []string   `json:"addresses"`
 	AddressMode string     `json:"addressMode"`
+	Password    string     `json:"password"`
 	UsedSpace   uint64     `json:"usedSpace"`
 	MaxSpace    uint64     `json:"maxSpace"`
 	Sync        syncStatus `json:"sync"`
@@ -561,6 +563,7 @@ func (s *Service) accountFromUserInfo(userInfo bridge.UserInfo) accountResponse 
 		State:       userStateToString(userInfo.State),
 		Addresses:   userInfo.Addresses,
 		AddressMode: userInfo.AddressMode.String(),
+		Password:    hex.EncodeToString(userInfo.BridgePass),
 		UsedSpace:   userInfo.UsedSpace,
 		MaxSpace:    userInfo.MaxSpace,
 		Sync:        s.getSyncStatus(userInfo.UserID),

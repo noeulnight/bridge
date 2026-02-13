@@ -19,6 +19,7 @@ package web
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -99,6 +100,7 @@ func TestAccountsAuthAndList(t *testing.T) {
 	require.NoError(t, json.Unmarshal(authorizedResp.Body.Bytes(), &payload))
 	require.Len(t, payload.Accounts, 1)
 	assert.Equal(t, "user@example.com", payload.Accounts[0].Username)
+	assert.Equal(t, hex.EncodeToString([]byte("bridge-pass")), payload.Accounts[0].Password)
 	assert.Equal(t, "unknown", payload.Accounts[0].Sync.State)
 }
 
