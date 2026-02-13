@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7
+
 FROM golang:1.24.11-bookworm AS builder
 
 ARG APP_VERSION=3.22.0
@@ -15,11 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY . .
 
-RUN make gofiles && \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    make gofiles && \
     CGO_ENABLED=1 GOOS=linux \
     go build -trimpath \
     -ldflags="-s -w \

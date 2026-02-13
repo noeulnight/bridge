@@ -1,0 +1,6 @@
+.git
+.github
+.gocache*
+.gomodcache*
+.outline
+tmp
