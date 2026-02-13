@@ -36,6 +36,9 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    dbus \
+    dbus-x11 \
+    gnome-keyring \
     libfido2-1 \
     libcbor0.8 \
     libsecret-1-0 \
@@ -55,8 +58,9 @@ ENV BRIDGE_WEB_ADMIN_USER=root
 ENV BRIDGE_WEB_ADMIN_PASS=change-me
 ENV BRIDGE_WEB_ALLOW_NON_LOOPBACK=1
 ENV BRIDGE_BIND_HOST=0.0.0.0
+ENV DBUS_SESSION_BUS_ADDRESS=unix:path=/tmp/dbus-session
 
 EXPOSE 8081 1143 1025
 
-ENTRYPOINT ["/usr/local/bin/Desktop-Bridge"]
+ENTRYPOINT ["/bin/sh", "-ec", "dbus-daemon --session --address=\"$DBUS_SESSION_BUS_ADDRESS\" --fork --nopidfile; eval \"$(printf \"\\n\" | gnome-keyring-daemon --unlock --components=secrets)\"; exec /usr/local/bin/Desktop-Bridge \"$@\"", "--"]
 CMD ["--web", "--web-addr", "0.0.0.0:8081"]

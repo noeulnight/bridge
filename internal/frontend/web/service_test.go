@@ -19,7 +19,6 @@ package web
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -100,7 +99,7 @@ func TestAccountsAuthAndList(t *testing.T) {
 	require.NoError(t, json.Unmarshal(authorizedResp.Body.Bytes(), &payload))
 	require.Len(t, payload.Accounts, 1)
 	assert.Equal(t, "user@example.com", payload.Accounts[0].Username)
-	assert.Equal(t, hex.EncodeToString([]byte("bridge-pass")), payload.Accounts[0].Password)
+	assert.Equal(t, "bridge-pass", payload.Accounts[0].Password)
 	assert.Equal(t, "unknown", payload.Accounts[0].Sync.State)
 }
 
@@ -264,6 +263,62 @@ func TestSyncStatusEvents(t *testing.T) {
 	status := service.getSyncStatus("u1")
 	assert.Equal(t, "failed", status.State)
 	assert.Equal(t, "sync failed", status.Error)
+}
+
+func TestSyncStatusProgressPercent(t *testing.T) {
+	t.Parallel()
+
+	bridge := newFakeBridge()
+	eventCh := make(chan events.Event, 1)
+	service, err := newService(bridge, eventCh, make(chan struct{}), testConfig())
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		service.watchEvents()
+		close(done)
+	}()
+
+	eventCh <- events.SyncProgress{UserID: "u1", Progress: 0.5, Elapsed: 2 * time.Second, Remaining: 3 * time.Second}
+	close(eventCh)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("watchEvents did not finish")
+	}
+
+	status := service.getSyncStatus("u1")
+	assert.Equal(t, "running", status.State)
+	assert.Equal(t, 50.0, status.Progress)
+}
+
+func TestSyncStatusFinishedProgressPercent(t *testing.T) {
+	t.Parallel()
+
+	bridge := newFakeBridge()
+	eventCh := make(chan events.Event, 1)
+	service, err := newService(bridge, eventCh, make(chan struct{}), testConfig())
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		service.watchEvents()
+		close(done)
+	}()
+
+	eventCh <- events.SyncFinished{UserID: "u1"}
+	close(eventCh)
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("watchEvents did not finish")
+	}
+
+	status := service.getSyncStatus("u1")
+	assert.Equal(t, "finished", status.State)
+	assert.Equal(t, 100.0, status.Progress)
 }
 
 func mustNewTestService(t *testing.T, bridge *fakeBridge) *Service {

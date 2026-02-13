@@ -21,7 +21,6 @@ package web
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -219,7 +218,7 @@ func (s *Service) watchEvents() {
 		case events.SyncProgress:
 			s.setSyncStatus(event.UserID, syncStatus{
 				State:            "running",
-				Progress:         event.Progress,
+				Progress:         event.Progress * 100,
 				ElapsedSeconds:   event.Elapsed.Seconds(),
 				RemainingSeconds: event.Remaining.Seconds(),
 				UpdatedAt:        time.Now().UTC(),
@@ -228,7 +227,7 @@ func (s *Service) watchEvents() {
 		case events.SyncFinished:
 			s.setSyncStatus(event.UserID, syncStatus{
 				State:            "finished",
-				Progress:         1,
+				Progress:         100,
 				ElapsedSeconds:   0,
 				RemainingSeconds: 0,
 				UpdatedAt:        time.Now().UTC(),
@@ -563,7 +562,7 @@ func (s *Service) accountFromUserInfo(userInfo bridge.UserInfo) accountResponse 
 		State:       userStateToString(userInfo.State),
 		Addresses:   userInfo.Addresses,
 		AddressMode: userInfo.AddressMode.String(),
-		Password:    hex.EncodeToString(userInfo.BridgePass),
+		Password:    string(userInfo.BridgePass),
 		UsedSpace:   userInfo.UsedSpace,
 		MaxSpace:    userInfo.MaxSpace,
 		Sync:        s.getSyncStatus(userInfo.UserID),
