@@ -380,16 +380,32 @@ func (s *Connector) AddMessagesToMailbox(ctx context.Context, _ connector.IMAPSt
 	return s.client.LabelMessages(ctx, usertypes.MapTo[imap.MessageID, string](messageIDs), string(mboxID))
 }
 
+func (s *Connector) isMailboxOfTypeLabel(mboxID string) bool {
+	labels := s.labels.Read()
+	defer labels.Close()
+
+	if v, ok := labels.GetLabel(mboxID); ok && v.Type == proton.LabelTypeLabel {
+		return true
+	}
+	return false
+}
+
 func (s *Connector) RemoveMessagesFromMailbox(ctx context.Context, _ connector.IMAPStateWrite, messageIDs []imap.MessageID, mboxID imap.MailboxID) error {
 	if isAllMailOrScheduled(mboxID) {
 		return connector.ErrOperationNotAllowed
 	}
 
-	msgIDs := usertypes.MapTo[imap.MessageID, string](messageIDs)
-	if err := s.client.UnlabelMessages(ctx, msgIDs, string(mboxID)); err != nil {
-		return err
+	if s.isMailboxOfTypeLabel(string(mboxID)) {
+		msgIDs := usertypes.MapTo[imap.MessageID, string](messageIDs)
+
+		if err := s.client.UnlabelMessages(ctx, msgIDs, string(mboxID)); err != nil {
+			return err
+		}
 	}
 
+	// Messages can be perma deleted only from 'Trash' or 'Drafts'.
+	// 'Drafts' is included here because some clients like Outlook on Windows, when editing mails on web->client->web->client,
+	// to apply the state they delete the previous message and create a new one.
 	if mboxID == proton.TrashLabel || mboxID == proton.DraftsLabel {
 		const ChunkSize = 150
 		var msgToPermaDelete []string
@@ -432,6 +448,11 @@ func (s *Connector) RemoveMessagesFromMailbox(ctx context.Context, _ connector.I
 						continue
 					}
 
+					// If we remove a message from either 'Drafts' or 'Trash' treat it as it has been already unlabelled
+					if id == string(mboxID) {
+						continue
+					}
+
 					if label.Type == proton.LabelTypeSystem && (id == proton.AllDraftsLabel ||
 						id == proton.AllMailLabel ||
 						id == proton.AllSentLabel ||
@@ -443,7 +464,19 @@ func (s *Connector) RemoveMessagesFromMailbox(ctx context.Context, _ connector.I
 				}
 
 				if len(remainingLabels) == 0 {
+					logrus.WithFields(logrus.Fields{
+						"messageID":    m.ID,
+						"mailboxID":    mboxID,
+						"labels id(s)": m.LabelIDs,
+					}).Info("Message has been marked for deletion")
 					msgToPermaDelete = append(msgToPermaDelete, m.ID)
+				} else {
+					logrus.WithFields(logrus.Fields{
+						"messageID":       m.ID,
+						"mailboxID":       mboxID,
+						"labels id(s)":    m.LabelIDs,
+						"remainingLabels": remainingLabels,
+					}).Info("Message has not been marked for deletion due to remaining labels.")
 				}
 			}
 		}
@@ -467,29 +500,26 @@ func (s *Connector) MoveMessages(ctx context.Context, _ connector.IMAPStateWrite
 		isAllMailOrScheduled(mboxToID) {
 		return false, connector.ErrOperationNotAllowed
 	}
-
 	shouldExpungeOldLocation := func() bool {
 		rdLabels := s.labels.Read()
 		defer rdLabels.Close()
 
-		var result bool
-
 		if v, ok := rdLabels.GetLabel(string(mboxFromID)); ok && v.Type == proton.LabelTypeLabel {
-			result = true
+			return true
 		}
 
 		if v, ok := rdLabels.GetLabel(string(mboxToID)); ok && (v.Type == proton.LabelTypeFolder || v.Type == proton.LabelTypeSystem) {
-			result = true
+			return true
 		}
 
-		return result
+		return false
 	}()
 
 	if err := s.client.LabelMessages(ctx, usertypes.MapTo[imap.MessageID, string](messageIDs), string(mboxToID)); err != nil {
 		return false, fmt.Errorf("labeling messages: %w", err)
 	}
 
-	if shouldExpungeOldLocation {
+	if s.isMailboxOfTypeLabel(string(mboxFromID)) {
 		if err := s.client.UnlabelMessages(ctx, usertypes.MapTo[imap.MessageID, string](messageIDs), string(mboxFromID)); err != nil {
 			return false, fmt.Errorf("unlabeling messages: %w", err)
 		}
@@ -786,7 +816,6 @@ func (s *Connector) createDraftWithParser(ctx context.Context, parser *parser.Pa
 			ExternalID: message.ExternalID,
 		},
 	})
-
 	if err != nil {
 		return proton.Message{}, fmt.Errorf("failed to create draft: %w", err)
 	}
