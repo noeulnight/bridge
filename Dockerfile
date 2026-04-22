@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:1.24.11-bookworm AS builder
+FROM golang:1.26.1-bookworm AS builder
 
 ARG APP_VERSION=3.22.0
 ARG BUILD_ENV=dev
